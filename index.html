@@ -331,6 +331,10 @@ mark{background:rgba(26,108,255,0.15);color:var(--accent);border-radius:2px;padd
 
 <script>
 const ADMIN_PW = 'admin1234';
+// ⬇ Cloudflare Worker 배포 후 아래 URL을 교체하세요
+// 예: 'https://anthropic-proxy.이름.workers.dev'
+// 비워두면 직접 호출 시도 후 로컬 추론으로 폴백
+const PROXY_URL = '';
 const CAT_COLORS={
   '데이터 아키텍처':'#1a6cff','데이터 처리':'#00a86b','데이터 거버넌스':'#f59e0b',
   'AI / ML':'#7c3aed','클라우드 & 인프라':'#e53935','온톨로지 & 지식표현':'#0891b2',
@@ -519,7 +523,7 @@ async function runAiSearch(query){
   body.innerHTML=`<div class="ai-loading">AI가 용어를 분석하고 있습니다</div>`;
   try{
     const res=await Promise.race([
-      fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:buildPrompt(query)}]})}),
+      fetch(PROXY_URL||'https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:buildPrompt(query)}]})}),
       new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000))
     ]);
     const data=await res.json();
@@ -527,26 +531,115 @@ async function runAiSearch(query){
     const m=text.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/);
     if(!m)throw new Error('parse');
     renderAiResult(query,JSON.parse(m[0]));
-  }catch(e){renderAiResult(query,inferTerm(query));}
+  }catch(e){
+    const isCors=e.message.includes('CORS')||e.message.includes('fetch')||e.message.includes('Failed');
+    if(isCors&&!PROXY_URL){
+      showProxyGuide();
+    } else {
+      renderAiResult(query,inferTerm(query));
+    }
+  }
 }
+function showProxyGuide(){
+  const body=document.getElementById('ai-body');
+  document.getElementById('ai-label').textContent='설정 필요';
+  body.innerHTML=`
+    <div style="background:var(--amber-bg);border:1.5px solid rgba(245,158,11,0.3);border-radius:var(--r-sm);padding:18px 20px;">
+      <div style="font-size:15px;font-weight:700;color:var(--amber);margin-bottom:10px;">⚠️ CORS 설정이 필요합니다</div>
+      <div style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:14px;">
+        GitHub Pages에서 Anthropic API를 직접 호출하면 브라우저 보안 정책(CORS)에 의해 차단됩니다.<br>
+        <strong>Cloudflare Workers 무료 프록시</strong>를 설정하면 해결됩니다.
+      </div>
+      <div style="font-size:13px;color:var(--text2);background:#fff;border-radius:var(--r-sm);padding:14px;border:1px solid var(--border);line-height:2;">
+        <strong>설정 방법 (5분 소요)</strong><br>
+        1. <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--accent)">workers.cloudflare.com</a> → 무료 가입 → Create Worker<br>
+        2. 다운로드한 <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">cloudflare-worker.js</code> 코드를 붙여넣기<br>
+        3. Settings → Variables → <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">ANTHROPIC_API_KEY</code> 에 API 키 입력<br>
+        4. Deploy 후 URL 복사<br>
+        5. <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">index.html</code> 상단 <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">PROXY_URL</code> 변수에 URL 붙여넣기
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;align-items:center;">
+        <div style="font-size:13px;color:var(--text3)">지금 당장은 로컬 추론으로 대체 정의합니다 →</div>
+        <button class="ai-inline-btn" onclick="renderAiResult('${document.getElementById('ai-label').dataset.q||searchQuery}',inferTerm(searchQuery))">로컬 추론으로 계속</button>
+      </div>
+    </div>`;
+}
+
 function buildPrompt(q){
   return`데이터 플랫폼 및 제조 DX 분야 용어사전 정의를 작성해주세요.\n용어: ${q}\nJSON만 응답:\n{"kor":"한글명","eng":"영문명","category":"데이터 아키텍처|데이터 처리|데이터 거버넌스|AI / ML|클라우드 & 인프라|온톨로지 & 지식표현|시맨틱 & 데이터 표준|신흥 & 트렌드|플랫폼별 고유 용어|제조 DX 중 하나","short":"한 줄 정의(30자)","detail":"상세설명(100자)","mfg_example":"철강/제조 활용 예시","platforms":["플랫폼"],"related":["관련용어"]}`;
 }
+// ── 내장 용어 사전 (PROXY_URL 미설정 시 로컬 추론에 사용) ──
+const TERM_DICT = {
+  'llm': {kor:'LLM',eng:'Large Language Model',category:'AI / ML',short:'대규모 언어 모델. 방대한 텍스트로 학습한 AI 언어 처리 모델',detail:'수십억~수천억 개의 파라미터로 구성된 신경망 모델. GPT, Claude, Gemini 등이 대표적. 텍스트 생성·요약·번역·코드 작성·질의응답 등 다양한 자연어 작업을 수행. 데이터 플랫폼과 연동해 자연어 기반 데이터 조회(Text-to-SQL), RAG, AI 에이전트 구현에 활용.',mfg_example:'설비 고장 이력 텍스트를 LLM으로 분석해 정비 원인 자동 분류. 작업지시서를 자연어로 생성하고 공정 이상 상황을 자연어로 설명.',platforms:['AWS Bedrock','GCP Vertex AI','Snowflake Cortex','Azure OpenAI'],related:['RAG','AI 에이전트','LLMOps','Bedrock','벡터 데이터베이스']},
+  'large language model': {kor:'LLM',eng:'Large Language Model',category:'AI / ML',short:'대규모 언어 모델. 방대한 텍스트로 학습한 AI 언어 처리 모델',detail:'수십억~수천억 개의 파라미터로 구성된 신경망 모델. GPT, Claude, Gemini 등이 대표적. 텍스트 생성·요약·번역·코드 작성·질의응답 등 다양한 자연어 작업을 수행.',mfg_example:'설비 고장 이력 텍스트를 LLM으로 분석해 정비 원인 자동 분류.',platforms:['AWS Bedrock','GCP Vertex AI','Snowflake Cortex'],related:['RAG','AI 에이전트','LLMOps']},
+  'kafka': {kor:'Apache Kafka',eng:'Apache Kafka',category:'데이터 처리',short:'대용량 실시간 데이터 스트리밍 오픈소스 플랫폼',detail:'생산자(Producer)-소비자(Consumer) 패턴으로 데이터를 비동기 전달. Topic 단위로 데이터 분류. 초당 수백만 건 메시지 처리 가능. 내결함성·고가용성 설계. CDC, IoT 센서 스트리밍, 마이크로서비스 연동에 필수.',mfg_example:'전기로 센서 데이터를 Kafka Topic으로 실시간 수집 → 이상감지 시스템으로 전달 → 예지보전 알림 발송.',platforms:['AWS MSK','Confluent Cloud','Azure Event Hubs'],related:['스트리밍 처리','CDC','Kinesis','Spark']},
+  'spark': {kor:'Apache Spark',eng:'Apache Spark',category:'데이터 처리',short:'대규모 데이터를 분산 처리하는 오픈소스 엔진',detail:'인메모리 분산처리로 기존 MapReduce 대비 최대 100배 빠름. Python/SQL/Java/Scala 지원. 배치·스트리밍·ML을 단일 엔진에서 처리. Databricks의 핵심 처리 엔진.',mfg_example:'수억 건 센서 이력 데이터를 Spark로 병렬 처리해 이상 패턴 분석. 공정 데이터 대용량 ETL 파이프라인 구성.',platforms:['Databricks','AWS EMR','GCP Dataproc','Azure HDInsight'],related:['Databricks','Delta Lake','배치 처리','스트리밍 처리']},
+  'federated query': {kor:'연합 쿼리',eng:'Federated Query',category:'데이터 아키텍처',short:'데이터를 이동시키지 않고 분산된 원천에서 단일 쿼리로 조회하는 기술',detail:'서로 다른 데이터베이스·스토리지·클라우드에 있는 데이터를 복사 없이 단일 SQL로 동시 조회. 데이터 이동 비용·지연·중복 제거. Zero-Copy 통합의 핵심 기술. 보안 규제로 데이터 이동이 제한된 환경에서 유용.',mfg_example:'SAP ERP(온프레미스)와 Snowflake(클라우드)에 분산된 원가·생산 데이터를 단일 쿼리로 통합 조회.',platforms:['Snowflake','AWS Athena Federated Query','GCP BigQuery Omni','Databricks'],related:['Zero-Copy 통합','데이터 레이크하우스','ELT']},
+  'gpt': {kor:'GPT',eng:'Generative Pre-trained Transformer',category:'AI / ML',short:'OpenAI의 대규모 언어 모델. 자연어 생성·이해에 특화',detail:'Transformer 아키텍처 기반 생성형 AI 모델. GPT-3, GPT-4, GPT-4o 시리즈. 텍스트 생성·요약·번역·코드 작성·질의응답에 광범위 활용. Claude·Gemini와 함께 3대 LLM 중 하나.',mfg_example:'공정 이상 상황 보고서 자동 초안 생성. 설비 점검 체크리스트 자동 작성.',platforms:['Azure OpenAI','AWS Bedrock (제한적)'],related:['LLM','RAG','AI 에이전트','Bedrock']},
+  'transformer': {kor:'트랜스포머',eng:'Transformer',category:'AI / ML',short:'어텐션 메커니즘 기반 딥러닝 아키텍처. 현대 LLM의 기반 구조',detail:'2017년 Google이 발표한 신경망 아키텍처. Self-Attention으로 문장 전체 문맥을 동시 처리. GPT·BERT·Claude·Gemini 등 모든 현대 LLM의 기반. 자연어처리·이미지인식·음성인식에 범용 적용.',mfg_example:'공정 로그 시계열 데이터에 Transformer 적용해 이상 패턴 예측 모델 구성.',platforms:['AWS SageMaker','GCP Vertex AI','Databricks'],related:['LLM','GPT','BERT','딥러닝']},
+  'embedding': {kor:'임베딩',eng:'Embedding',category:'AI / ML',short:'텍스트·이미지 등을 고차원 숫자 벡터로 변환하는 기술',detail:'의미적으로 유사한 데이터는 벡터 공간에서 가깝게 위치. RAG·추천 시스템·유사 문서 검색의 핵심. OpenAI text-embedding, Sentence-BERT 등이 대표적 임베딩 모델.',mfg_example:'설비 매뉴얼·정비 이력 텍스트를 임베딩 변환해 벡터 DB에 저장 → 유사 고장 사례 자동 검색.',platforms:['AWS Bedrock','Snowflake Cortex','Databricks','GCP Vertex AI'],related:['벡터 데이터베이스','RAG','LLM']},
+  'vector database': {kor:'벡터 데이터베이스',eng:'Vector Database',category:'신흥 & 트렌드',short:'AI 임베딩 벡터를 저장하고 유사도 기반으로 검색하는 데이터베이스',detail:'텍스트·이미지를 고차원 벡터로 변환해 저장. 코사인 유사도·유클리드 거리로 의미적 유사 데이터 검색. RAG 구현의 핵심 컴포넌트. Pinecone, pgvector, Chroma 등이 대표적.',mfg_example:'설비 매뉴얼·정비이력 텍스트를 벡터화 저장 → 베어링 이상 증상 질의 시 유사 문서 자동 검색.',platforms:['Snowflake','Databricks','AWS Bedrock Knowledge Bases','Pinecone'],related:['RAG','LLM','임베딩']},
+  'fine-tuning': {kor:'파인튜닝',eng:'Fine-Tuning',category:'AI / ML',short:'사전학습된 LLM을 특정 도메인 데이터로 추가 학습시키는 기법',detail:'General Purpose 모델을 도메인 특화(철강·의료·법률 등) 데이터로 추가 학습. 적은 데이터로도 해당 도메인 성능 향상. 전체 파라미터 학습(Full Fine-tuning)과 부분 학습(LoRA·PEFT) 방식으로 구분.',mfg_example:'철강 공정 용어·판정 기준 데이터로 LLM을 파인튜닝해 공정 이상 분류 정확도 향상.',platforms:['AWS Bedrock','GCP Vertex AI','Databricks MLflow','Azure ML'],related:['LLM','MLOps','Feature Store']},
+  'prompt engineering': {kor:'프롬프트 엔지니어링',eng:'Prompt Engineering',category:'AI / ML',short:'LLM의 출력 품질을 높이기 위한 입력 텍스트 설계 기법',detail:'Chain-of-Thought(단계적 추론), Few-shot(예시 제공), Role-playing(역할 부여), RAG 결합 등 다양한 기법. LLM 성능을 코드 변경 없이 향상시키는 가장 빠른 방법.',mfg_example:'공정 이상 분석 프롬프트를 최적화해 LLM의 원인 추론 정확도를 높임.',platforms:['AWS Bedrock','GCP Vertex AI','Snowflake Cortex'],related:['LLM','LLMOps','RAG']},
+  'data mart': {kor:'데이터 마트',eng:'Data Mart',category:'데이터 아키텍처',short:'특정 부서·업무 목적에 맞게 DW에서 추출한 서브셋 저장소',detail:'전사 데이터 웨어하우스에서 특정 도메인(영업·생산·품질·재무)에 필요한 데이터만 별도 구성. 쿼리 속도 향상 및 부서별 자율 분석 지원. 종속형(DW 연동)과 독립형으로 구분.',mfg_example:'생산팀용 수율 마트, 품질팀용 불량 마트, 영업팀용 출하 마트를 각각 Redshift에 별도 구성.',platforms:['Snowflake','AWS Redshift','GCP BigQuery','Databricks'],related:['데이터 웨어하우스','스타 스키마','OLAP']},
+  'pipeline': {kor:'데이터 파이프라인',eng:'Data Pipeline',category:'데이터 처리',short:'데이터가 원천에서 최종 소비처까지 흐르는 자동화된 처리 과정',detail:'수집→저장→변환→서빙의 전체 흐름을 자동화. 스케줄링·모니터링·장애 알림·재실행 포함. Airflow로 오케스트레이션. 배치·스트리밍 파이프라인으로 구분.',mfg_example:'MES→S3→Glue(변환)→Redshift(DW)→QuickSight(대시보드)로 이어지는 생산 데이터 자동화 흐름.',platforms:['AWS Glue','GCP Dataflow','Databricks','Airflow'],related:['ETL','ELT','Airflow','배치 처리']},
+  'schema': {kor:'스키마',eng:'Schema',category:'데이터 아키텍처',short:'데이터의 구조(컬럼명·타입·관계)를 정의한 설계도',detail:'테이블의 컬럼명, 데이터 타입(VARCHAR·INT·DATE 등), NULL 허용 여부, 기본키·외래키, 인덱스를 명세. 데이터 표준화의 기술적 기반. 스키마 변경(Schema Evolution)은 데이터 플랫폼의 핵심 관리 과제.',mfg_example:'heat_id(VARCHAR), scrap_type(VARCHAR), charge_weight(FLOAT) 등 전기로 장입 테이블 스키마 정의.',platforms:['AWS Glue Data Catalog','Snowflake','Databricks Unity Catalog'],related:['메타데이터','스타 스키마','파티셔닝']},
+  'api': {kor:'API',eng:'Application Programming Interface',category:'신흥 & 트렌드',short:'소프트웨어 간 통신을 위한 표준 인터페이스',detail:'REST API·GraphQL·gRPC 등 다양한 방식. 데이터 플랫폼에서는 데이터 수집(외부 API 연동)·ML 모델 서빙(추론 API)·시스템 간 통합에 핵심 역할.',mfg_example:'MES API로 생산실적 실시간 수집. SageMaker Endpoint API로 품질 예측 모델 호출.',platforms:['AWS API Gateway','GCP Apigee','Snowflake REST API','Databricks API'],related:['데이터 파이프라인','MLOps','마이크로서비스']},
+  'kubernetes': {kor:'쿠버네티스',eng:'Kubernetes (K8s)',category:'클라우드 & 인프라',short:'컨테이너 애플리케이션의 배포·확장·관리를 자동화하는 오케스트레이션 플랫폼',detail:'구글이 개발한 오픈소스. 컨테이너(Docker) 클러스터를 자동 관리. ML 모델 서빙·데이터 파이프라인 스케일링에 활용. AWS EKS·GCP GKE·Azure AKS가 관리형 서비스.',mfg_example:'공정 예측 AI 모델을 Kubernetes로 배포해 트래픽에 따라 자동 스케일 업/다운.',platforms:['AWS EKS','GCP GKE','Azure AKS'],related:['Docker','MLOps','마이크로서비스']},
+  'docker': {kor:'도커',eng:'Docker',category:'클라우드 & 인프라',short:'애플리케이션을 컨테이너로 패키징·배포하는 오픈소스 플랫폼',detail:'OS에 독립적으로 동일한 환경을 재현. 이미지(Image)→컨테이너(Container) 구조. ML 모델·데이터 파이프라인 배포의 표준.',mfg_example:'ML 모델과 의존 라이브러리를 Docker 이미지로 패키징해 공장 Edge 장비에 일관되게 배포.',platforms:['AWS ECR','GCP Artifact Registry','Docker Hub'],related:['Kubernetes','MLOps','Edge AI']},
+  'olap': {kor:'OLAP',eng:'Online Analytical Processing',category:'데이터 아키텍처',short:'다차원 데이터를 대화형으로 분석하는 방식',detail:'드릴다운(상세 보기)·롤업(집계)·슬라이싱(단면 분석)·피버팅 지원. 데이터 웨어하우스 위에 구현. BI 대시보드의 기반 기술.',mfg_example:"'전체→공장별→설비별→시간별'로 수율을 드릴다운 분석. 제품군×공장 피버팅으로 불량률 비교.",platforms:['Snowflake','AWS Redshift','GCP BigQuery','Databricks DBSQL'],related:['데이터 웨어하우스','스타 스키마','BI']},
+  'bi': {kor:'BI',eng:'Business Intelligence',category:'데이터 아키텍처',short:'데이터를 수집·분석해 의사결정을 지원하는 도구·프로세스 전반',detail:'Tableau·Power BI·Looker 등이 대표 도구. 데이터 웨어하우스에서 데이터를 조회해 시각화·대시보드·리포팅 제공. 현업이 직접 데이터를 분석하는 Self-Service BI가 최신 트렌드.',mfg_example:'생산수율·설비가동률·품질불량률을 경영진용 KPI 대시보드로 실시간 시각화.',platforms:['Tableau','Power BI','AWS QuickSight','GCP Looker'],related:['OLAP','시맨틱 레이어','데이터 웨어하우스']},
+};
+
 function inferTerm(q){
-  const ql=q.toLowerCase();
-  let category='신흥 & 트렌드',platforms=['공통'],related=[];
-  if(/aws|s3|redshift|glue|sagemaker|bedrock|kinesis|athena/.test(ql)){category='클라우드 & 인프라';platforms=['AWS'];}
-  else if(/gcp|bigquery|vertex|dataflow|looker/.test(ql)){category='클라우드 & 인프라';platforms=['GCP'];}
-  else if(/snowflake|snowpark|cortex/.test(ql)){category='클라우드 & 인프라';platforms=['Snowflake'];}
-  else if(/databricks|delta|spark|mlflow/.test(ql)){category='클라우드 & 인프라';platforms=['Databricks'];}
-  else if(/ml|ai|모델|학습|추론|llm|rag|agent/.test(ql)){category='AI / ML';related=['MLOps','LLM'];}
-  else if(/거버넌스|governance|catalog|lineage|rbac|품질/.test(ql)){category='데이터 거버넌스';related=['데이터 거버넌스'];}
-  else if(/etl|elt|파이프라인|kafka|streaming|batch|airflow|dbt/.test(ql)){category='데이터 처리';related=['데이터 파이프라인'];}
-  else if(/lake|warehouse|mesh|fabric|mart|lakehouse/.test(ql)){category='데이터 아키텍처';related=['데이터 레이크'];}
-  else if(/ontology|온톨로지|rdf|owl|sparql|graph|knowledge/.test(ql)){category='온톨로지 & 지식표현';related=['온톨로지'];}
-  else if(/semantic|시맨틱|mdm|표준화|glossary/.test(ql)){category='시맨틱 & 데이터 표준';related=['시맨틱 레이어'];}
-  else if(/mes|scada|iot|oee|예지|twin|공장|설비|제조/.test(ql)){category='제조 DX';related=['MES','IIoT'];}
-  return{kor:q,eng:q,category,short:`${q} 관련 데이터 플랫폼 기술 개념`,detail:`${q}은(는) 데이터 플랫폼 및 DX 분야에서 활용되는 기술 개념입니다. 내용을 직접 수정해 완성해주세요.`,mfg_example:`${q}을(를) 활용한 제조 현장 사례를 입력해주세요.`,platforms,related};
+  const ql = q.toLowerCase().trim();
+
+  // 1순위: 내장 사전에서 정확 매칭
+  if (TERM_DICT[ql]) return TERM_DICT[ql];
+
+  // 2순위: 내장 사전에서 부분 매칭
+  const dictKey = Object.keys(TERM_DICT).find(k => ql.includes(k) || k.includes(ql));
+  if (dictKey) return TERM_DICT[dictKey];
+
+  // 3순위: 키워드 기반 카테고리 추론 + 의미 있는 기본값
+  let category='신흥 & 트렌드', platforms=['공통'], related=[];
+  let eng = q, kor = q;
+
+  if(/aws|s3|redshift|glue|sagemaker|bedrock|kinesis|athena|greengrass/.test(ql)){
+    category='클라우드 & 인프라'; platforms=['AWS']; related=['AWS','클라우드'];
+  } else if(/gcp|bigquery|vertex|dataflow|looker|dataplex/.test(ql)){
+    category='클라우드 & 인프라'; platforms=['GCP']; related=['GCP','클라우드'];
+  } else if(/snowflake|snowpark|cortex/.test(ql)){
+    category='클라우드 & 인프라'; platforms=['Snowflake']; related=['Snowflake'];
+  } else if(/databricks|delta|mlflow|unity catalog/.test(ql)){
+    category='클라우드 & 인프라'; platforms=['Databricks']; related=['Databricks','Delta Lake'];
+  } else if(/llm|gpt|claude|gemini|bert|nlp|자연어|언어모델/.test(ql)){
+    category='AI / ML'; platforms=['AWS Bedrock','GCP Vertex AI']; related=['LLM','RAG','AI 에이전트'];
+  } else if(/ml|머신러닝|machine learning|모델|딥러닝|neural|신경망/.test(ql)){
+    category='AI / ML'; related=['MLOps','Feature Store'];
+  } else if(/ai|인공지능|artificial intelligence|agent|에이전트/.test(ql)){
+    category='AI / ML'; related=['LLM','MLOps'];
+  } else if(/거버넌스|governance|catalog|lineage|rbac|품질|quality|마스킹/.test(ql)){
+    category='데이터 거버넌스'; related=['데이터 거버넌스','데이터 카탈로그'];
+  } else if(/etl|elt|파이프라인|pipeline|kafka|streaming|batch|airflow|dbt|cdc/.test(ql)){
+    category='데이터 처리'; related=['데이터 파이프라인','ELT'];
+  } else if(/lake|warehouse|mesh|fabric|mart|lakehouse|schema|스키마/.test(ql)){
+    category='데이터 아키텍처'; related=['데이터 레이크','데이터 웨어하우스'];
+  } else if(/ontology|온톨로지|rdf|owl|sparql|knowledge graph|그래프/.test(ql)){
+    category='온톨로지 & 지식표현'; related=['온톨로지','지식 그래프'];
+  } else if(/semantic|시맨틱|mdm|표준화|glossary|용어|메타/.test(ql)){
+    category='시맨틱 & 데이터 표준'; related=['시맨틱 레이어','비즈니스 용어사전'];
+  } else if(/mes|scada|iot|oee|예지|twin|공장|설비|제조|plc|historian/.test(ql)){
+    category='제조 DX'; related=['MES','IIoT','예지보전'];
+  }
+
+  return {
+    kor, eng, category,
+    short: `${q}: 데이터 플랫폼 관련 기술 용어`,
+    detail: `"${q}"은(는) ${category} 분야의 기술 개념입니다. AI 자동 정의를 위해 상단 PROXY_URL 설정 후 재시도하거나, 관리자 메뉴에서 직접 내용을 수정하세요.`,
+    mfg_example: `${q}을(를) 활용한 철강·제조 현장 사례를 직접 입력해주세요.`,
+    platforms, related
+  };
 }
 
 // ── 중복 체크 ──
