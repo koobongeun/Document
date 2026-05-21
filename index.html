@@ -177,6 +177,12 @@ mark{background:rgba(26,108,255,0.15);color:var(--accent);border-radius:2px;padd
 .ai-field:last-child{margin-bottom:0;}
 .ai-field-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:5px;}
 .ai-field-value{font-size:14px;color:var(--text2);line-height:1.65;}
+.ai-edit-input{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color .2s;resize:none;}
+.ai-edit-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,108,255,0.08);}
+.ai-edit-select{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;font-size:14px;color:var(--text);font-family:inherit;outline:none;cursor:pointer;}
+.ai-edit-select:focus{border-color:var(--accent);}
+.ai-field-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:4px;}
+.edit-hint{font-size:10px;color:var(--accent);font-weight:400;letter-spacing:0;}
 .ai-actions{display:flex;gap:8px;margin-top:18px;}
 .ai-save-btn{padding:10px 22px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;}
 .ai-save-btn:hover{background:#008f5c;}
@@ -297,15 +303,15 @@ mark{background:rgba(26,108,255,0.15);color:var(--accent);border-radius:2px;padd
     </div>
     <div class="active-filters" id="active-filters"></div>
     <div class="ai-inline-bar" id="ai-inline-bar">
-      <div class="ai-inline-text">🤖 <strong id="ai-inline-query"></strong>을(를) AI로 자동 정의해서 용어사전에 추가할 수 있습니다</div>
-      <button class="ai-inline-btn" id="ai-inline-btn" onclick="runAiSearchFromBar()">AI 자동 정의하기</button>
+      <div class="ai-inline-text">🔍 <strong id="ai-inline-query"></strong>을(를) 자동 정의해서 용어사전에 추가할 수 있습니다</div>
+      <button class="ai-inline-btn" id="ai-inline-btn" onclick="runAiSearchFromBar()">용어 자동 정의하기</button>
     </div>
     <div class="card-grid" id="card-grid"></div>
     <div class="ai-panel" id="ai-panel">
       <div class="ai-panel-header">
         <div class="ai-icon">🤖</div>
         <div>
-          <div class="ai-title">AI 용어 자동 정의</div>
+          <div class="ai-title">용어 자동 정의</div>
           <div class="ai-sub" id="ai-label"></div>
         </div>
       </div>
@@ -503,7 +509,7 @@ function showEmptyState(){
     <div class="empty-state">
       <div class="empty-icon">🔎</div>
       <div class="empty-title">"${q}"에 해당하는 용어가 없습니다</div>
-      <div class="empty-sub">위의 <strong style="color:var(--accent)">AI 자동 정의하기</strong> 버튼을 눌러<br>용어사전에 추가하세요</div>
+      <div class="empty-sub">위의 <strong style="color:var(--accent)">용어 자동 정의하기</strong> 버튼을 눌러<br>용어사전에 추가하세요</div>
     </div>`;
 }
 
@@ -731,7 +737,7 @@ function findDuplicates(kor, eng){
 function renderAiResult(query, parsed){
   const body=document.getElementById('ai-body');
   const src = parsed.wiki_url ? '📖 Wikipedia 수집' : (PROXY_URL ? '🤖 AI 생성' : '📚 내장 사전');
-  document.getElementById('ai-label').textContent=`"${query}" — ${src} | 내용 확인 후 추가하세요`;
+  document.getElementById('ai-label').textContent=`"${query}" — ${src} | 내용을 수정 후 추가하세요`;
   const dups=findDuplicates(parsed.kor||query, parsed.eng||query);
   const dupHtml=dups.length?`
     <div class="dup-notice">
@@ -742,19 +748,55 @@ function renderAiResult(query, parsed){
           <div class="dup-item-short">${t.short}</div>
         </div>`).join('')}
       </div>
-      <div style="font-size:13px;color:var(--text3);margin-top:10px">기존 용어와 다른 내용이라면 아래에서 이름을 수정 후 추가할 수 있습니다.</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:10px">기존 용어와 다른 내용이라면 아래에서 수정 후 추가할 수 있습니다.</div>
     </div>`:'' ;
+  const cats=Object.keys(CAT_COLORS);
+  const catOptions=cats.map(c=>`<option value="${c}" ${(parsed.category||'')=== c?'selected':''}>${c}</option>`).join('');
   const pltList=['AWS','GCP','Snowflake','Databricks','Azure','공통','오픈소스'];
   const pltChecks=pltList.map(p=>`<label><input class="plt-chk" type="checkbox" value="${p}" ${(parsed.platforms||[]).some(x=>x.includes(p))?'checked':''}><span class="plt-lbl">${p}</span></label>`).join('');
+  const relStr=(parsed.related||[]).join(', ');
+  const wikiLink=parsed.wiki_url?`<div style="margin-top:6px"><a href="${parsed.wiki_url}" target="_blank" style="color:var(--accent);font-size:12px">📖 ${parsed.wiki_title} 원문 보기 →</a></div>`:'';
+
   body.innerHTML=`${dupHtml}
     <div class="ai-result">
-      <div class="ai-field"><div class="ai-field-label">분류</div><div class="ai-field-value">${parsed.category||''}</div></div>
-      <div class="ai-field"><div class="ai-field-label">용어명</div><div class="ai-field-value">${parsed.kor||''} <span style="color:var(--text3);font-size:13px">(${parsed.eng||''})</span></div></div>
-      <div class="ai-field"><div class="ai-field-label">한 줄 정의</div><div class="ai-field-value">${parsed.short||''}</div></div>
-      <div class="ai-field"><div class="ai-field-label">상세 설명</div><div class="ai-field-value">${(parsed.detail||'').replace(/\n/g,'<br>')}</div></div>
-      ${parsed.wiki_url?`<div class="ai-field"><div class="ai-field-label">📖 Wikipedia 원문</div><div class="ai-field-value"><a href="${parsed.wiki_url}" target="_blank" style="color:var(--accent);font-size:13px">${parsed.wiki_title} 위키백과 원문 보기 →</a></div></div>`:''}
-      <div class="ai-field"><div class="ai-field-label">제조 DX 활용 예시</div><div class="ai-field-value">${parsed.mfg_example||''}</div></div>
-      <div class="ai-field"><div class="ai-field-label">플랫폼 선택</div><div class="plt-checks">${pltChecks}</div></div>
+      <div style="font-size:12px;color:var(--accent);background:var(--accent-bg);padding:8px 12px;border-radius:var(--r-sm);margin-bottom:14px;border:1px solid rgba(26,108,255,0.15)">
+        ✏️ 모든 항목을 직접 수정할 수 있습니다. 확인 후 DB에 추가하세요.
+      </div>
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="ai-field">
+          <div class="ai-field-label">용어명 (한글) <span class="edit-hint">수정 가능</span></div>
+          <input id="ei-kor" class="ai-edit-input" value="${(parsed.kor||'').replace(/"/g,'&quot;')}">
+        </div>
+        <div class="ai-field">
+          <div class="ai-field-label">용어명 (영문) <span class="edit-hint">수정 가능</span></div>
+          <input id="ei-eng" class="ai-edit-input" value="${(parsed.eng||'').replace(/"/g,'&quot;')}">
+        </div>
+      </div>
+      <div class="ai-field" style="margin-bottom:12px">
+        <div class="ai-field-label">분류 <span class="edit-hint">수정 가능</span></div>
+        <select id="ei-cat" class="ai-edit-select">${catOptions}</select>
+      </div>
+      <div class="ai-field" style="margin-bottom:12px">
+        <div class="ai-field-label">한 줄 정의 <span class="edit-hint">수정 가능</span></div>
+        <input id="ei-short" class="ai-edit-input" value="${(parsed.short||'').replace(/"/g,'&quot;')}">
+      </div>
+      <div class="ai-field" style="margin-bottom:12px">
+        <div class="ai-field-label">상세 설명 <span class="edit-hint">수정 가능</span></div>
+        <textarea id="ei-detail" class="ai-edit-input" rows="4">${(parsed.detail||'').replace(/<br>/g,'\n')}</textarea>
+        ${wikiLink}
+      </div>
+      <div class="ai-field" style="margin-bottom:12px">
+        <div class="ai-field-label">제조 DX 활용 예시 <span class="edit-hint">수정 가능</span></div>
+        <textarea id="ei-mfg" class="ai-edit-input" rows="2">${parsed.mfg_example||''}</textarea>
+      </div>
+      <div class="ai-field" style="margin-bottom:12px">
+        <div class="ai-field-label">관련 용어 <span class="edit-hint">쉼표로 구분, 수정 가능</span></div>
+        <input id="ei-rel" class="ai-edit-input" value="${relStr.replace(/"/g,'&quot;')}">
+      </div>
+      <div class="ai-field">
+        <div class="ai-field-label">플랫폼 선택</div>
+        <div class="plt-checks">${pltChecks}</div>
+      </div>
     </div>
     <div class="ai-actions">
       <button class="ai-save-btn" onclick="saveAiTerm()">✅ DB에 추가</button>
@@ -767,13 +809,21 @@ function closeAiAndOpen(id){hideAiPanel();openModal(id);}
 function saveAiTerm(){
   const body=document.getElementById('ai-body');
   const parsed=body._parsed; if(!parsed)return;
+  // 편집된 값 우선 읽기
+  const kor=(document.getElementById('ei-kor')?.value||parsed.kor||searchQuery).trim();
+  const eng=(document.getElementById('ei-eng')?.value||parsed.eng||'').trim();
+  const cat=(document.getElementById('ei-cat')?.value||parsed.category||'신흥 & 트렌드');
+  const short=(document.getElementById('ei-short')?.value||parsed.short||'').trim();
+  const detail=(document.getElementById('ei-detail')?.value||parsed.detail||'').trim();
+  const mfg=(document.getElementById('ei-mfg')?.value||parsed.mfg_example||'').trim();
+  const rel=(document.getElementById('ei-rel')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!kor||!short){showToast('용어명과 한 줄 정의는 필수입니다');return;}
   const plts=[...document.querySelectorAll('.plt-chk:checked')].map(c=>c.value);
   const newTerm={
-    id:'ai-'+Date.now(), category:parsed.category||'신흥 & 트렌드',
-    kor:parsed.kor||searchQuery, eng:parsed.eng||'',
-    short:parsed.short||'', detail:parsed.detail||'',
-    mfg_example:parsed.mfg_example||'',
-    platforms:plts, related:parsed.related||[],
+    id:'ai-'+Date.now(), category:cat,
+    kor, eng, short, detail,
+    mfg_example:mfg,
+    platforms:plts, related:rel,
     added_date:new Date().toISOString().slice(0,10), is_new:true
   };
   const extra=JSON.parse(localStorage.getItem('glossary_extra')||'[]');
