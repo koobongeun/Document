@@ -518,27 +518,103 @@ function runAiSearchFromBar(){
 async function runAiSearch(query){
   const panel=document.getElementById('ai-panel');
   const body=document.getElementById('ai-body');
-  document.getElementById('ai-label').textContent=`"${query}" 자동 정의 중...`;
+  document.getElementById('ai-label').textContent=`"${query}" 검색 중...`;
   panel.classList.add('show');
-  body.innerHTML=`<div class="ai-loading">AI가 용어를 분석하고 있습니다</div>`;
-  try{
-    const res=await Promise.race([
-      fetch(PROXY_URL||'https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:buildPrompt(query)}]})}),
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000))
-    ]);
-    const data=await res.json();
-    const text=data.content?.find(c=>c.type==='text')?.text||'';
-    const m=text.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/);
-    if(!m)throw new Error('parse');
-    renderAiResult(query,JSON.parse(m[0]));
-  }catch(e){
-    const isCors=e.message.includes('CORS')||e.message.includes('fetch')||e.message.includes('Failed');
-    if(isCors&&!PROXY_URL){
-      showProxyGuide();
-    } else {
-      renderAiResult(query,inferTerm(query));
-    }
+  body.innerHTML=`<div class="ai-loading">Wikipedia·내장 사전에서 정보를 수집하고 있습니다</div>`;
+
+  // 1순위: Anthropic API (PROXY_URL 설정된 경우)
+  if(PROXY_URL){
+    try{
+      const res=await Promise.race([
+        fetch(PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:buildPrompt(query)}]})}),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))
+      ]);
+      const data=await res.json();
+      const text=data.content?.find(c=>c.type==='text')?.text||'';
+      const m=text.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/);
+      if(m){renderAiResult(query,JSON.parse(m[0]));return;}
+    }catch(e){console.warn('Proxy failed, fallback to Wikipedia');}
   }
+
+  // 2순위: Wikipedia API (무료, CORS 허용)
+  try{
+    const result = await searchWikipedia(query);
+    if(result){renderAiResult(query, result);return;}
+  }catch(e){console.warn('Wikipedia failed:', e);}
+
+  // 3순위: 내장 사전 + 로컬 추론
+  renderAiResult(query, inferTerm(query));
+}
+
+// ── Wikipedia API 검색 ──────────────────────────────
+async function searchWikipedia(query){
+  // 한국어 검색 시도
+  const koResult = await fetchWiki(query, 'ko');
+  if(koResult) return koResult;
+
+  // 한국어 실패 시 영어 검색
+  const enResult = await fetchWiki(query, 'en');
+  if(enResult) return enResult;
+
+  return null;
+}
+
+async function fetchWiki(query, lang){
+  try{
+    const searchUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*&srlimit=3`;
+    const searchRes = await Promise.race([
+      fetch(searchUrl),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),6000))
+    ]);
+    const searchData = await searchRes.json();
+    const hits = searchData?.query?.search;
+    if(!hits||!hits.length) return null;
+
+    // 가장 관련성 높은 결과의 본문 가져오기
+    const title = hits[0].title;
+    const contentUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=true&explaintext=true&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+    const contentRes = await fetch(contentUrl);
+    const contentData = await contentRes.json();
+    const pages = contentData?.query?.pages;
+    const page = Object.values(pages||{})[0];
+    if(!page||!page.extract) return null;
+
+    return parseWikiToTerm(query, title, page.extract, lang);
+  }catch(e){return null;}
+}
+
+function parseWikiToTerm(query, wikiTitle, extract, lang){
+  // 본문에서 첫 단락만 추출 (가장 핵심 정의)
+  const paras = extract.split('\n').filter(p=>p.trim().length>30);
+  const firstPara = paras[0]||'';
+  const secondPara = paras[1]||'';
+
+  // 한 줄 정의: 첫 문장
+  const firstSentence = firstPara.split(/[.。]/)[0].trim();
+  const shortDef = firstSentence.length>80
+    ? firstSentence.slice(0,77)+'...'
+    : firstSentence;
+
+  // 상세 설명: 첫~두 번째 단락 합산 (200자 이내)
+  const detail = (firstPara+(secondPara?' '+secondPara:'')).slice(0,300);
+
+  // 카테고리 추론
+  const base = inferTerm(query);
+
+  // Wikipedia 출처 표시
+  const wikiLink = `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(wikiTitle)}`;
+
+  return {
+    ...base,
+    kor: lang==='ko' ? wikiTitle : base.kor,
+    eng: lang==='en' ? wikiTitle : base.eng,
+    short: shortDef || base.short,
+    detail: detail
+      ? detail + `\n\n📖 출처: Wikipedia (${lang === 'ko' ? '한국어' : '영어'})`
+      : base.detail,
+    wiki_url: wikiLink,
+    wiki_title: wikiTitle,
+  };
 }
 function showProxyGuide(){
   const body=document.getElementById('ai-body');
@@ -654,7 +730,8 @@ function findDuplicates(kor, eng){
 
 function renderAiResult(query, parsed){
   const body=document.getElementById('ai-body');
-  document.getElementById('ai-label').textContent=`"${query}" — 내용 확인 후 추가하세요`;
+  const src = parsed.wiki_url ? '📖 Wikipedia 수집' : (PROXY_URL ? '🤖 AI 생성' : '📚 내장 사전');
+  document.getElementById('ai-label').textContent=`"${query}" — ${src} | 내용 확인 후 추가하세요`;
   const dups=findDuplicates(parsed.kor||query, parsed.eng||query);
   const dupHtml=dups.length?`
     <div class="dup-notice">
@@ -674,7 +751,8 @@ function renderAiResult(query, parsed){
       <div class="ai-field"><div class="ai-field-label">분류</div><div class="ai-field-value">${parsed.category||''}</div></div>
       <div class="ai-field"><div class="ai-field-label">용어명</div><div class="ai-field-value">${parsed.kor||''} <span style="color:var(--text3);font-size:13px">(${parsed.eng||''})</span></div></div>
       <div class="ai-field"><div class="ai-field-label">한 줄 정의</div><div class="ai-field-value">${parsed.short||''}</div></div>
-      <div class="ai-field"><div class="ai-field-label">상세 설명</div><div class="ai-field-value">${parsed.detail||''}</div></div>
+      <div class="ai-field"><div class="ai-field-label">상세 설명</div><div class="ai-field-value">${(parsed.detail||'').replace(/\n/g,'<br>')}</div></div>
+      ${parsed.wiki_url?`<div class="ai-field"><div class="ai-field-label">📖 Wikipedia 원문</div><div class="ai-field-value"><a href="${parsed.wiki_url}" target="_blank" style="color:var(--accent);font-size:13px">${parsed.wiki_title} 위키백과 원문 보기 →</a></div></div>`:''}
       <div class="ai-field"><div class="ai-field-label">제조 DX 활용 예시</div><div class="ai-field-value">${parsed.mfg_example||''}</div></div>
       <div class="ai-field"><div class="ai-field-label">플랫폼 선택</div><div class="plt-checks">${pltChecks}</div></div>
     </div>
