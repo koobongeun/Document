@@ -1127,8 +1127,7 @@ async function updateApprovalInGithub(id, approvedVal){
     if(!getRes.ok) return false;
     const getJson=await getRes.json();
     const sha=getJson.sha;
-    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/
-/g,'')))));
+    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/\n/g,'')))));
     const term=current.terms.find(t=>t.id===id);
     if(!term) return false;
     term.approved=approvedVal;
@@ -1153,8 +1152,7 @@ async function deleteTermFromGithub(id){
     if(!getRes.ok) return false;
     const getJson=await getRes.json();
     const sha=getJson.sha;
-    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/
-/g,'')))));
+    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/\n/g,'')))));
     const term=current.terms.find(t=>t.id===id);
     current.terms=current.terms.filter(t=>t.id!==id);
     current.total=current.terms.length;
@@ -1178,8 +1176,7 @@ async function pushTermToGithub(term){
     if(!getRes.ok) return false;
     const getJson=await getRes.json();
     const sha=getJson.sha;
-    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/
-/g,'')))));
+    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/\n/g,'')))));
     current.terms.push(term);
     current.total=current.terms.length;
     const newContent=JSON.stringify(current,null,2);
