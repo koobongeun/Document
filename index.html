@@ -122,6 +122,13 @@ mark{background:rgba(26,108,255,0.15);color:var(--accent);border-radius:2px;padd
 .empty-sub{font-size:15px;color:var(--text2);margin-bottom:28px;line-height:1.75;}
 .ai-search-btn{padding:13px 28px;background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;box-shadow:0 4px 12px rgba(26,108,255,0.3);}
 .ai-search-btn:hover{background:var(--accent-hover);transform:translateY(-1px);}
+.ai-inline-bar{display:none;align-items:center;justify-content:space-between;background:var(--accent-bg);border:1.5px solid rgba(26,108,255,0.2);border-radius:var(--r-sm);padding:12px 18px;margin-bottom:14px;}
+.ai-inline-bar.show{display:flex;}
+.ai-inline-text{font-size:14px;color:var(--text2);}
+.ai-inline-text strong{color:var(--text);font-weight:700;}
+.ai-inline-btn{padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .2s;}
+.ai-inline-btn:hover{background:var(--accent-hover);}
+.ai-search-btn:hover{background:var(--accent-hover);transform:translateY(-1px);}
 
 /* ── MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;overflow-y:auto;padding:60px 20px 40px;}
@@ -289,6 +296,10 @@ mark{background:rgba(26,108,255,0.15);color:var(--accent);border-radius:2px;padd
       </div>
     </div>
     <div class="active-filters" id="active-filters"></div>
+    <div class="ai-inline-bar" id="ai-inline-bar">
+      <div class="ai-inline-text">🤖 <strong id="ai-inline-query"></strong>을(를) AI로 자동 정의해서 용어사전에 추가할 수 있습니다</div>
+      <button class="ai-inline-btn" id="ai-inline-btn" onclick="runAiSearchFromBar()">AI 자동 정의하기</button>
+    </div>
     <div class="card-grid" id="card-grid"></div>
     <div class="ai-panel" id="ai-panel">
       <div class="ai-panel-header">
@@ -341,6 +352,9 @@ async function init(){
   }catch(e){DB=[];}
   const extra=JSON.parse(localStorage.getItem('glossary_extra')||'[]');
   extra.forEach(t=>{if(!DB.find(d=>d.id===t.id))DB.push(t);});
+  // 삭제된 항목 제외
+  const deleted=new Set(JSON.parse(localStorage.getItem('glossary_deleted')||'[]'));
+  if(deleted.size>0) DB=DB.filter(t=>!deleted.has(t.id));
   buildFuse(); buildCatList(); renderAll();
 }
 function buildFuse(){
@@ -382,8 +396,18 @@ function renderAll(){
   if(searchQuery)tags.push(`<span class="filter-tag">🔍 "${searchQuery}"<button onclick="clearSearch()">×</button></span>`);
   af.innerHTML=tags.join('');
   const grid=document.getElementById('card-grid');
+  // AI 인라인 버튼: 검색어가 있으면 결과 유무와 관계없이 항상 표시
+  const inlineBar=document.getElementById('ai-inline-bar');
+  const inlineQuery=document.getElementById('ai-inline-query');
+  if(searchQuery.trim()){
+    inlineQuery.textContent=`"${searchQuery}"`;
+    inlineBar.classList.add('show');
+  } else {
+    inlineBar.classList.remove('show');
+  }
+
   if(!data.length){grid.innerHTML='';showEmptyState();}
-  else{hideAiPanel();grid.innerHTML=data.map(t=>renderCard(t,matchMap.get(t.id))).join('');}
+  else{grid.innerHTML=data.map(t=>renderCard(t,matchMap.get(t.id))).join('');}
 }
 
 function renderCard(t,matches){
@@ -475,9 +499,16 @@ function showEmptyState(){
     <div class="empty-state">
       <div class="empty-icon">🔎</div>
       <div class="empty-title">"${q}"에 해당하는 용어가 없습니다</div>
-      <div class="empty-sub">AI가 자동으로 정의를 생성하고<br>용어사전에 추가할 수 있습니다</div>
-      <button class="ai-search-btn" onclick="runAiSearch('${q}')">🤖 AI로 "${q}" 자동 정의하기</button>
+      <div class="empty-sub">위의 <strong style="color:var(--accent)">AI 자동 정의하기</strong> 버튼을 눌러<br>용어사전에 추가하세요</div>
     </div>`;
+}
+
+function runAiSearchFromBar(){
+  const query=searchQuery.trim();
+  if(!query)return;
+  // AI 패널 아래로 스크롤
+  document.getElementById('ai-panel').scrollIntoView({behavior:'smooth',block:'start'});
+  runAiSearch(query);
 }
 
 async function runAiSearch(query){
@@ -578,7 +609,7 @@ function saveAiTerm(){
   extra.push(newTerm);
   localStorage.setItem('glossary_extra',JSON.stringify(extra));
   DB.push(newTerm); buildFuse(); buildCatList();
-  hideAiPanel(); clearSearch(); renderAll();
+  hideAiPanel(); clearSearch(); renderAll(); document.getElementById('ai-inline-bar').classList.remove('show');
   showToast(`"${newTerm.kor}" 추가 완료!`,'success');
 }
 function hideAiPanel(){document.getElementById('ai-panel').classList.remove('show');}
@@ -602,7 +633,7 @@ function toggleFavFilter(){
 function setCategory(cat,btn){activeCategory=cat;document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAll();}
 function setPlatform(pf,btn){activePlatform=pf;document.querySelectorAll('.pf-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAll();}
 function setSort(btn,sort){activeSort=sort;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAll();}
-function clearSearch(){document.getElementById('search-input').value='';searchQuery='';document.getElementById('search-clear').classList.remove('show');hideAiPanel();renderAll();}
+function clearSearch(){document.getElementById('search-input').value='';searchQuery='';document.getElementById('search-clear').classList.remove('show');document.getElementById('ai-inline-bar').classList.remove('show');hideAiPanel();renderAll();}
 
 // ── ADMIN ──
 function openAdmin(){document.getElementById('admin-overlay').classList.add('open');renderAdminGate();}
@@ -674,7 +705,7 @@ function renderAdminTab(){
         <button class="btn-primary" onclick="exportDB()">📥 JSON 내보내기</button>
         <button class="btn-secondary" onclick="exportCSV()">📊 CSV 내보내기</button>
       </div>
-      <div style="margin-top:16px;font-size:13px;color:var(--text3)">기본 용어: ${DB.length - JSON.parse(localStorage.getItem('glossary_extra')||'[]').length}개 | 추가 용어: ${JSON.parse(localStorage.getItem('glossary_extra')||'[]').length}개 | 합계: ${DB.length}개</div>`;
+      <div style="margin-top:16px;font-size:13px;color:var(--text3)">기본 용어: ${JSON.parse(localStorage.getItem('glossary_extra')||'[]').length>0?DB.length - JSON.parse(localStorage.getItem('glossary_extra')||'[]').length:DB.length}개 | 추가 용어: ${JSON.parse(localStorage.getItem('glossary_extra')||'[]').length}개 | 삭제: ${JSON.parse(localStorage.getItem('glossary_deleted')||'[]').length}개 | 현재 합계: ${DB.length}개</div>`;
   }
 }
 function filterDelList(q){
@@ -682,14 +713,24 @@ function filterDelList(q){
   rows.forEach(r=>{r.style.display=r.querySelector('.del-item-kor').textContent.toLowerCase().includes(q.toLowerCase())?'flex':'none';});
 }
 function deleteTerm(id){
-  if(!confirm('이 용어를 삭제하시겠습니까?'))return;
+  const term=DB.find(t=>t.id===id);
+  if(!confirm(`"${term?term.kor:id}" 용어를 삭제하시겠습니까?`))return;
+  // DB에서 제거
   DB=DB.filter(t=>t.id!==id);
+  // extra(추가 용어)에서도 제거
   const extra=JSON.parse(localStorage.getItem('glossary_extra')||'[]').filter(t=>t.id!==id);
   localStorage.setItem('glossary_extra',JSON.stringify(extra));
+  // 삭제 목록에 기록 (db.json 기본 용어도 재로드 시 제외)
+  const deleted=new Set(JSON.parse(localStorage.getItem('glossary_deleted')||'[]'));
+  deleted.add(id);
+  localStorage.setItem('glossary_deleted',JSON.stringify([...deleted]));
   buildFuse(); buildCatList(); renderAll();
   const row=document.getElementById('delrow-'+id);
   if(row)row.remove();
-  showToast('용어가 삭제되었습니다');
+  // 탭 카운트 갱신
+  const countEl=document.querySelector('#admin-tab-content>div:first-child');
+  if(countEl)countEl.textContent=`전체 용어 ${DB.length}개 | 삭제한 항목은 복원하려면 브라우저 새로고침 후 관리자에서 복원 가능`;
+  showToast(`"${term?term.kor:''}" 삭제 완료`);
 }
 function adminAdd(){
   const kor=document.getElementById('f-kor').value.trim();
