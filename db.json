@@ -19,7 +19,8 @@
         "레이크하우스"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-warehouse",
@@ -41,7 +42,8 @@
         "OLAP"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "lakehouse",
@@ -62,7 +64,8 @@
         "Databricks"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-mesh",
@@ -83,7 +86,8 @@
         "연합 거버넌스"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-fabric",
@@ -105,7 +109,8 @@
         "데이터 카탈로그"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-product",
@@ -126,7 +131,8 @@
         "데이터 카탈로그"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "etl",
@@ -146,7 +152,8 @@
         "데이터 파이프라인"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "elt",
@@ -167,7 +174,8 @@
         "dbt"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "batch-processing",
@@ -187,7 +195,8 @@
         "데이터 파이프라인"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "stream-processing",
@@ -208,7 +217,8 @@
         "Kinesis"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "kafka",
@@ -228,7 +238,8 @@
         "CDC"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "cdc",
@@ -249,7 +260,8 @@
         "ETL"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "spark",
@@ -270,7 +282,8 @@
         "스트리밍"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "dbt",
@@ -291,7 +304,8 @@
         "Airflow"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "airflow",
@@ -311,7 +325,8 @@
         "데이터 파이프라인"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "parquet",
@@ -333,7 +348,8 @@
         "데이터 레이크"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "delta-lake",
@@ -354,7 +370,8 @@
         "Databricks"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "iceberg",
@@ -376,7 +393,8 @@
         "Parquet"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-governance",
@@ -397,7 +415,8 @@
         "데이터 품질"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-catalog",
@@ -419,7 +438,8 @@
         "DataZone"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "glue-data-catalog",
@@ -438,7 +458,8 @@
         "메타데이터"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "lake-formation",
@@ -457,7 +478,8 @@
         "DataZone"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "datazone",
@@ -476,7 +498,8 @@
         "시맨틱 레이어"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "unity-catalog",
@@ -495,7 +518,8 @@
         "데이터 리니지"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-lineage",
@@ -516,7 +540,8 @@
         "메타데이터"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "rbac",
@@ -537,7 +562,8 @@
         "데이터 거버넌스"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-quality",
@@ -557,7 +583,8 @@
         "메타데이터"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "mlops",
@@ -579,7 +606,8 @@
         "모델 레지스트리"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "mlflow",
@@ -600,7 +628,8 @@
         "SageMaker"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "feature-store",
@@ -621,7 +650,8 @@
         "MLflow"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "bedrock",
@@ -640,7 +670,8 @@
         "Knowledge Bases"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "vertex-ai",
@@ -659,7 +690,8 @@
         "BigQuery"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "rag",
@@ -680,7 +712,8 @@
         "벡터 DB"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "computer-vision",
@@ -702,7 +735,8 @@
         "MLOps"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "redshift",
@@ -721,7 +755,8 @@
         "QuickSight"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "bigquery",
@@ -740,7 +775,8 @@
         "Looker"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "snowflake",
@@ -760,7 +796,8 @@
         "Snowpark"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "databricks",
@@ -780,7 +817,8 @@
         "Spark"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "snowflake-vw",
@@ -798,7 +836,8 @@
         "스케일링"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "cortex-ai",
@@ -818,7 +857,8 @@
         "시맨틱 레이어"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "snowpark",
@@ -837,7 +877,8 @@
         "MLOps"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "delta-sharing",
@@ -857,7 +898,8 @@
         "Delta Lake"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "ontology",
@@ -879,7 +921,8 @@
         "시맨틱 웹"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "knowledge-graph",
@@ -901,7 +944,8 @@
         "그래프 DB"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "rdf",
@@ -921,7 +965,8 @@
         "지식 그래프"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "owl",
@@ -940,7 +985,8 @@
         "지식 그래프"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "sparql",
@@ -960,7 +1006,8 @@
         "지식 그래프"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "graph-db",
@@ -981,7 +1028,8 @@
         "RDF"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "semantic-layer",
@@ -1004,7 +1052,8 @@
         "비즈니스 용어사전"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "business-glossary",
@@ -1026,7 +1075,8 @@
         "온톨로지"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "mdm",
@@ -1047,7 +1097,8 @@
         "데이터 품질"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-standardization",
@@ -1068,7 +1119,8 @@
         "메타데이터 관리"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "text-to-sql",
@@ -1090,7 +1142,8 @@
         "Cortex AI"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "vector-db",
@@ -1113,7 +1166,8 @@
         "임베딩"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "ai-agent",
@@ -1136,7 +1190,8 @@
         "오케스트레이션"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "llmops",
@@ -1158,7 +1213,8 @@
         "AI 에이전트"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "data-observability",
@@ -1180,7 +1236,8 @@
         "데이터 파이프라인"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "realtime-analytics",
@@ -1201,7 +1258,8 @@
         "OLAP"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "ot-it",
@@ -1223,7 +1281,8 @@
         "Digital Twin"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "mes",
@@ -1243,7 +1302,8 @@
         "OT/IT 융합"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "predictive-maintenance",
@@ -1263,7 +1323,8 @@
         "CBM"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "digital-twin",
@@ -1284,7 +1345,8 @@
         "시뮬레이션"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "oee",
@@ -1304,7 +1366,8 @@
         "예지보전"
       ],
       "added_date": "2026-05-01",
-      "is_new": false
+      "is_new": false,
+      "approved": "Y"
     },
     {
       "id": "sagemaker",
@@ -1323,7 +1386,8 @@
         "Greengrass"
       ],
       "added_date": "2026-05-21",
-      "is_new": true
+      "is_new": true,
+      "approved": "Y"
     },
     {
       "id": "greengrass",
@@ -1343,7 +1407,8 @@
         "IIoT"
       ],
       "added_date": "2026-05-21",
-      "is_new": true
+      "is_new": true,
+      "approved": "Y"
     },
     {
       "id": "snowflake-time-travel",
@@ -1361,7 +1426,8 @@
         "Delta Lake Time Travel"
       ],
       "added_date": "2026-05-21",
-      "is_new": true
+      "is_new": true,
+      "approved": "Y"
     },
     {
       "id": "looker-lml",
@@ -1380,7 +1446,8 @@
         "비즈니스 용어사전"
       ],
       "added_date": "2026-05-21",
-      "is_new": true
+      "is_new": true,
+      "approved": "Y"
     },
     {
       "id": "databricks-photon",
@@ -1399,7 +1466,8 @@
         "쿼리 성능"
       ],
       "added_date": "2026-05-21",
-      "is_new": true
+      "is_new": true,
+      "approved": "Y"
     },
     {
       "id": "bigquery-ml",
@@ -1418,7 +1486,8 @@
         "MLOps"
       ],
       "added_date": "2026-05-21",
-      "is_new": true
+      "is_new": true,
+      "approved": "Y"
     },
     {
       "id": "federated-learning",
@@ -1438,9 +1507,10 @@
         "MLOps"
       ],
       "added_date": "2026-05-21",
-      "is_new": true
+      "is_new": true,
+      "approved": "Y"
     }
   ],
-  "version": "2.0",
+  "version": "3.0",
   "total": 70
 }
