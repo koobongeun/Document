@@ -1064,21 +1064,31 @@ function requestDelete(id){
   if(row)row.querySelector('.del-btn').textContent='요청됨', row.querySelector('.del-btn').disabled=true;
 }
 
-// ── 승인: 등록 (approved: N → Y 변경) ──
+// ── 승인: 등록 (upsert — db.json에 없으면 추가, 있으면 approved:Y 변경) ──
 async function approveAdd(idx){
   const t={...pendingAdds[idx]};
   delete t.status;
   t.approved='Y';
   t.is_new=true;
   t.approved_date=new Date().toISOString().slice(0,10);
-  // DB에 추가 (화면 표시)
-  DB.push(t);
-  // GitHub db.json에서 해당 id 항목 approved:Y로 변경
-  const ok=await updateApprovalInGithub(t.id,'Y');
+
+  // GitHub API: db.json 읽어서 있으면 approved:Y, 없으면 새로 추가
+  const ok=await upsertApprovedTerm(t);
+
+  if(ok){
+    // DB 메모리에도 반영
+    const existing=DB.find(d=>d.id===t.id);
+    if(!existing) DB.push(t);
+    else existing.approved='Y';
+  } else {
+    // GitHub 실패 시 로컬에라도 반영
+    DB.push(t);
+  }
+
   pendingAdds.splice(idx,1);
   localStorage.setItem('pending_adds',JSON.stringify(pendingAdds));
   buildFuse(); buildCatList(); renderAll();
-  showToast(`"${t.kor}" 승인 완료${ok?' — db.json 반영됨':''}`, 'success');
+  showToast(`"${t.kor}" 승인 완료${ok?' — db.json 반영됨':'(로컬 반영 — GitHub 토큰 확인 필요)'}`, 'success');
   updatePendingBadge();
   renderAdminContent();
 }
@@ -1116,6 +1126,48 @@ function rejectDel(idx){
   updatePendingBadge();
   showToast(`"${t.kor}" 삭제 요청 거부됨`);
   renderAdminContent();
+}
+
+// ── GitHub: 승인 upsert (있으면 approved:Y 변경, 없으면 추가) ──
+async function upsertApprovedTerm(term){
+  if(!GITHUB_TOKEN||!GITHUB_REPO) return false;
+  try{
+    const apiBase=`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
+    const getRes=await fetch(apiBase,{
+      headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json'}
+    });
+    if(!getRes.ok) return false;
+    const getJson=await getRes.json();
+    const sha=getJson.sha;
+    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/\n/g,'')))));
+
+    const existIdx=current.terms.findIndex(t=>t.id===term.id);
+    if(existIdx>=0){
+      // 이미 있으면 approved:Y로 변경
+      current.terms[existIdx]={...current.terms[existIdx],...term,approved:'Y'};
+    } else {
+      // 없으면 신규 추가
+      current.terms.push(term);
+    }
+    current.total=current.terms.length;
+
+    const newContent=JSON.stringify(current,null,2);
+    const encoded=btoa(unescape(encodeURIComponent(newContent)));
+    const putRes=await fetch(apiBase,{
+      method:'PUT',
+      headers:{
+        'Authorization':`token ${GITHUB_TOKEN}`,
+        'Accept':'application/vnd.github.v3+json',
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        message:`용어 승인: ${term.kor}`,
+        content:encoded,
+        sha
+      })
+    });
+    return putRes.ok;
+  }catch(e){console.error('upsertApprovedTerm failed:',e);return false;}
 }
 
 // ── GitHub: approved 값 변경 (N→Y) ──
