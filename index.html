@@ -225,6 +225,34 @@ mark{background:rgba(26,108,255,0.15);color:var(--accent);border-radius:2px;padd
 .del-btn{padding:5px 12px;background:var(--red-bg);color:var(--red);border:1px solid rgba(229,57,53,0.25);border-radius:var(--r-sm);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;transition:all .15s;}
 .del-btn:hover{background:var(--red);color:#fff;}
 .del-search{width:100%;margin-bottom:12px;}
+.pending-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--red);color:#fff;font-size:10px;font-weight:800;width:18px;height:18px;border-radius:50%;margin-left:4px;}
+.pending-item{background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;}
+.pending-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.pending-item-kor{font-size:14px;font-weight:700;color:var(--text);}
+.pending-item-cat{font-size:12px;color:var(--text3);}
+.pending-item-short{font-size:13px;color:var(--text2);margin-top:3px;line-height:1.5;}
+.pending-btns{display:flex;gap:6px;margin-top:8px;}
+.approve-btn{padding:5px 14px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.reject-btn{padding:5px 14px;background:var(--red-bg);color:var(--red);border:1px solid rgba(229,57,53,0.25);border-radius:var(--r-sm);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.approve-btn:hover{background:#008f5c;}
+.reject-btn:hover{background:var(--red);color:#fff;}
+.github-status{font-size:12px;padding:6px 12px;border-radius:var(--r-sm);margin-top:6px;display:inline-block;}
+.github-ok{background:var(--green-bg);color:var(--green);}
+.github-fail{background:var(--red-bg);color:var(--red);}
+.pending-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--red);color:#fff;font-size:10px;font-weight:800;width:18px;height:18px;border-radius:50%;margin-left:4px;}
+.pending-item{background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:8px;}
+.pending-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.pending-item-kor{font-size:14px;font-weight:700;color:var(--text);}
+.pending-item-cat{font-size:12px;color:var(--text3);}
+.pending-item-short{font-size:13px;color:var(--text2);margin-top:3px;line-height:1.5;}
+.pending-btns{display:flex;gap:6px;margin-top:8px;}
+.approve-btn{padding:5px 14px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
+.reject-btn{padding:5px 14px;background:var(--red-bg);color:var(--red);border:1px solid rgba(229,57,53,0.25);border-radius:var(--r-sm);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
+.approve-btn:hover{background:#008f5c;}
+.reject-btn:hover{background:var(--red);color:#fff;}
+.github-status{font-size:12px;padding:6px 12px;border-radius:var(--r-sm);margin-top:8px;}
+.github-ok{background:var(--green-bg);color:var(--green);}
+.github-fail{background:var(--red-bg);color:var(--red);}
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:28px;right:28px;background:var(--text);color:#fff;border-radius:var(--r-sm);padding:13px 20px;font-size:14px;font-weight:500;z-index:500;transform:translateY(80px);opacity:0;transition:all .3s;pointer-events:none;box-shadow:var(--shadow-lg);}
@@ -337,10 +365,14 @@ mark{background:rgba(26,108,255,0.15);color:var(--accent);border-radius:2px;padd
 
 <script>
 const ADMIN_PW = 'admin1234';
-// ⬇ Cloudflare Worker 배포 후 아래 URL을 교체하세요
-// 예: 'https://anthropic-proxy.이름.workers.dev'
-// 비워두면 직접 호출 시도 후 로컬 추론으로 폴백
-const PROXY_URL = '';
+const PROXY_URL = ''; // Cloudflare Worker URL (선택)
+
+// ─── GitHub 설정 ───────────────────────────────────────
+// 아래 두 값을 입력하면 승인 시 db.json이 자동 업데이트됩니다
+const GITHUB_TOKEN = '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';        // ← 여기에 Personal Access Token 입력
+const GITHUB_REPO  = 'koobongeun/Document'; // 저장소명 (변경 불필요)
+const GITHUB_FILE  = 'db.json'; // 파일명 (변경 불필요)
+// ────────────────────────────────────────────────────────
 const CAT_COLORS={
   '데이터 아키텍처':'#1a6cff','데이터 처리':'#00a86b','데이터 거버넌스':'#f59e0b',
   'AI / ML':'#7c3aed','클라우드 & 인프라':'#e53935','온톨로지 & 지식표현':'#0891b2',
@@ -353,19 +385,24 @@ let DB=[], filtered=[], activeCategory='전체', activePlatform='전체';
 let activeSort='category', searchQuery='', favOnly=false;
 let favSet=new Set(JSON.parse(localStorage.getItem('favs')||'[]'));
 let adminUnlocked=false, adminTab='add', fuse;
-
+let pendingAdds = JSON.parse(localStorage.getItem('pending_adds')||'[]');
+let pendingDels = JSON.parse(localStorage.getItem('pending_dels')||'[]');
 async function init(){
   try{
-    const r=await fetch('./db.json');
+    const r=await fetch('./db.json?v='+Date.now());
     const j=await r.json();
-    DB=j.terms||[];
+    // approved:'Y'만 화면에 표시, 'N'은 pendingAdds에 보관
+    const allTerms=j.terms||[];
+    DB=allTerms.filter(t=>t.approved==='Y');
+    // pending_adds에 없는 N 항목은 추가
+    const existIds=new Set(pendingAdds.map(p=>p.id));
+    allTerms.filter(t=>t.approved==='N').forEach(t=>{
+      if(!existIds.has(t.id)) pendingAdds.push(t);
+    });
+    localStorage.setItem('pending_adds',JSON.stringify(pendingAdds));
   }catch(e){DB=[];}
-  const extra=JSON.parse(localStorage.getItem('glossary_extra')||'[]');
-  extra.forEach(t=>{if(!DB.find(d=>d.id===t.id))DB.push(t);});
-  // 삭제된 항목 제외
-  const deleted=new Set(JSON.parse(localStorage.getItem('glossary_deleted')||'[]'));
-  if(deleted.size>0) DB=DB.filter(t=>!deleted.has(t.id));
   buildFuse(); buildCatList(); renderAll();
+  setTimeout(updatePendingBadge, 100);
 }
 function buildFuse(){
   fuse=new Fuse(DB,{keys:[{name:'kor',weight:.35},{name:'eng',weight:.3},{name:'short',weight:.2},{name:'detail',weight:.1},{name:'category',weight:.05}],threshold:.35,includeMatches:true,minMatchCharLength:1});
@@ -381,7 +418,7 @@ function buildCatList(){
     </button>`;
   }).join('');
   document.getElementById('cnt-전체').textContent=DB.length;
-  document.getElementById('stat-badge').textContent=`총 ${DB.length}개 용어`;
+  document.getElementById('stat-badge').textContent=`총 ${DB.length}개 용어 | 승인 대기 ${pendingAdds.length}개`;
 }
 
 function renderAll(){
@@ -806,10 +843,9 @@ function renderAiResult(query, parsed){
 }
 function closeAiAndOpen(id){hideAiPanel();openModal(id);}
 
-function saveAiTerm(){
+async function saveAiTerm(){
   const body=document.getElementById('ai-body');
   const parsed=body._parsed; if(!parsed)return;
-  // 편집된 값 우선 읽기
   const kor=(document.getElementById('ei-kor')?.value||parsed.kor||searchQuery).trim();
   const eng=(document.getElementById('ei-eng')?.value||parsed.eng||'').trim();
   const cat=(document.getElementById('ei-cat')?.value||parsed.category||'신흥 & 트렌드');
@@ -819,19 +855,32 @@ function saveAiTerm(){
   const rel=(document.getElementById('ei-rel')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
   if(!kor||!short){showToast('용어명과 한 줄 정의는 필수입니다');return;}
   const plts=[...document.querySelectorAll('.plt-chk:checked')].map(c=>c.value);
+
   const newTerm={
-    id:'ai-'+Date.now(), category:cat,
-    kor, eng, short, detail,
-    mfg_example:mfg,
-    platforms:plts, related:rel,
-    added_date:new Date().toISOString().slice(0,10), is_new:true
+    id:'req-'+Date.now(),
+    category:cat, kor, eng, short, detail,
+    mfg_example:mfg, platforms:plts, related:rel,
+    added_date:new Date().toISOString().slice(0,10),
+    is_new:true,
+    approved:'N'   // 관리자 승인 전
   };
-  const extra=JSON.parse(localStorage.getItem('glossary_extra')||'[]');
-  extra.push(newTerm);
-  localStorage.setItem('glossary_extra',JSON.stringify(extra));
-  DB.push(newTerm); buildFuse(); buildCatList();
-  hideAiPanel(); clearSearch(); renderAll(); document.getElementById('ai-inline-bar').classList.remove('show');
-  showToast(`"${newTerm.kor}" 추가 완료!`,'success');
+
+  // GitHub에 저장 (approved:N)
+  const ok = await pushTermToGithub(newTerm);
+  if(ok){
+    pendingAdds.push(newTerm);
+    localStorage.setItem('pending_adds',JSON.stringify(pendingAdds));
+    hideAiPanel(); clearSearch();
+    showToast(`"${kor}" 등록 요청 완료 — 관리자 승인 후 표시됩니다`,'success');
+    updatePendingBadge();
+  } else {
+    // GitHub 미설정 시 로컬 임시 저장
+    pendingAdds.push(newTerm);
+    localStorage.setItem('pending_adds',JSON.stringify(pendingAdds));
+    hideAiPanel(); clearSearch();
+    showToast(`"${kor}" 요청 저장됨 (GITHUB_TOKEN 설정 시 자동 반영)`,'success');
+    updatePendingBadge();
+  }
 }
 function hideAiPanel(){document.getElementById('ai-panel').classList.remove('show');}
 
@@ -856,6 +905,18 @@ function setPlatform(pf,btn){activePlatform=pf;document.querySelectorAll('.pf-bt
 function setSort(btn,sort){activeSort=sort;document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAll();}
 function clearSearch(){document.getElementById('search-input').value='';searchQuery='';document.getElementById('search-clear').classList.remove('show');document.getElementById('ai-inline-bar').classList.remove('show');hideAiPanel();renderAll();}
 
+// ── PENDING BADGE ──
+function updatePendingBadge(){
+  const total=pendingAdds.length+pendingDels.length;
+  let badge=document.getElementById('pending-badge');
+  if(!badge){
+    badge=document.createElement('span');badge.id='pending-badge';badge.className='pending-badge';
+    document.querySelector('.hdr-btn.primary').before(badge);
+  }
+  badge.textContent=total;
+  badge.style.display=total?'inline-flex':'none';
+}
+
 // ── ADMIN ──
 function openAdmin(){document.getElementById('admin-overlay').classList.add('open');renderAdminGate();}
 function closeAdmin(){document.getElementById('admin-overlay').classList.remove('open');}
@@ -877,11 +938,15 @@ function checkAdmin(){
   else showToast('비밀번호가 틀렸습니다');
 }
 function renderAdminContent(){
-  const cats=Object.keys(CAT_COLORS);
+  const addCnt=pendingAdds.length;
+  const delCnt=pendingDels.length;
   document.getElementById('admin-body').innerHTML=`
     <div class="admin-tabs">
-      <button class="admin-tab${adminTab==='add'?' active':''}" onclick="switchAdminTab('add')">✚ 용어 추가</button>
-      <button class="admin-tab${adminTab==='del'?' active':''}" onclick="switchAdminTab('del')">🗑 용어 삭제</button>
+      <button class="admin-tab${adminTab==='approve'?' active':''}" onclick="switchAdminTab('approve')">
+        ✅ 승인 대기${addCnt+delCnt>0?`<span class="pending-badge" style="position:relative;margin-left:5px">${addCnt+delCnt}</span>`:''}
+      </button>
+      <button class="admin-tab${adminTab==='add'?' active':''}" onclick="switchAdminTab('add')">✚ 직접 추가</button>
+      <button class="admin-tab${adminTab==='del'?' active':''}" onclick="switchAdminTab('del')">🗑 삭제 요청</button>
       <button class="admin-tab${adminTab==='export'?' active':''}" onclick="switchAdminTab('export')">📤 내보내기</button>
     </div>
     <div id="admin-tab-content"></div>`;
@@ -891,8 +956,52 @@ function switchAdminTab(tab){adminTab=tab;renderAdminContent();}
 function renderAdminTab(){
   const cats=Object.keys(CAT_COLORS);
   const el=document.getElementById('admin-tab-content');
-  if(adminTab==='add'){
+
+  // ── 승인 대기 탭 ──
+  if(adminTab==='approve'){
+    const addHtml=pendingAdds.length?pendingAdds.map((t,i)=>`
+      <div class="pending-item">
+        <div class="pending-item-header">
+          <div>
+            <span class="pending-item-kor">${t.kor}</span>
+            <span style="font-size:12px;color:var(--text3);margin-left:6px">${t.eng}</span>
+          </div>
+          <span class="pending-item-cat">${t.category} · 요청일 ${t.requested_date}</span>
+        </div>
+        <div class="pending-item-short">${t.short}</div>
+        ${t.detail?`<div style="font-size:12px;color:var(--text3);margin-top:4px">${t.detail.slice(0,80)}...</div>`:''}
+        <div class="pending-btns">
+          <button class="approve-btn" onclick="approveAdd(${i})">✅ 승인</button>
+          <button class="reject-btn" onclick="rejectAdd(${i})">✕ 거부</button>
+        </div>
+      </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">등록 대기 중인 용어가 없습니다</div>';
+
+    const delHtml=pendingDels.length?`
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin:16px 0 8px">삭제 요청 (${pendingDels.length}개)</div>
+      ${pendingDels.map((t,i)=>`
+        <div class="pending-item">
+          <div class="pending-item-header">
+            <span class="pending-item-kor">${t.kor}</span>
+            <span class="pending-item-cat">${t.category} · 요청일 ${t.requested_date}</span>
+          </div>
+          <div class="pending-item-short">${t.reason||'삭제 요청'}</div>
+          <div class="pending-btns">
+            <button class="approve-btn" onclick="approveDel(${i})">✅ 삭제 승인</button>
+            <button class="reject-btn" onclick="rejectDel(${i})">✕ 거부</button>
+          </div>
+        </div>`).join('')}`:'';
+
     el.innerHTML=`
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">등록 요청 (${pendingAdds.length}개)</div>
+      ${addHtml}${delHtml}
+      ${GITHUB_TOKEN?'<div class="github-status github-ok">✅ GitHub 연동됨 — 승인 시 db.json 자동 업데이트</div>':'<div class="github-status github-fail">⚠️ GITHUB_TOKEN 미설정 — 승인해도 로컬에만 저장됩니다</div>'}`;
+
+  // ── 직접 추가 탭 ──
+  } else if(adminTab==='add'){
+    el.innerHTML=`
+      <div style="font-size:13px;color:var(--accent);background:var(--accent-bg);padding:8px 12px;border-radius:var(--r-sm);margin-bottom:14px">
+        관리자 직접 추가는 승인 없이 즉시 db.json에 반영됩니다
+      </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">용어 (한글) *</label><input class="form-input" id="f-kor" placeholder="예: 데이터 마트"></div>
         <div class="form-group"><label class="form-label">용어 (영문) *</label><input class="form-input" id="f-eng" placeholder="예: Data Mart"></div>
@@ -905,63 +1014,215 @@ function renderAdminTab(){
         <div class="form-group"><label class="form-label">플랫폼 (쉼표 구분)</label><input class="form-input" id="f-plt" placeholder="AWS, GCP, Snowflake"></div>
         <div class="form-group"><label class="form-label">관련 용어 (쉼표 구분)</label><input class="form-input" id="f-rel" placeholder="데이터 레이크, ETL"></div>
       </div>
-      <div class="admin-btns"><button class="btn-secondary" onclick="closeAdmin()">취소</button><button class="btn-primary" onclick="adminAdd()">✚ 추가</button></div>`;
+      <div class="admin-btns"><button class="btn-secondary" onclick="closeAdmin()">취소</button><button class="btn-primary" onclick="adminAdd()">✚ 즉시 추가</button></div>`;
+
+  // ── 삭제 요청 탭 ──
   } else if(adminTab==='del'){
-    const extra=JSON.parse(localStorage.getItem('glossary_extra')||'[]');
-    const deletable=DB.filter(t=>extra.find(e=>e.id===t.id)||t.id.startsWith('ai-'));
     el.innerHTML=`
-      <div style="font-size:13px;color:var(--text3);margin-bottom:12px">로컬 저장 용어만 삭제 가능합니다 (추가된 ${deletable.length}개)</div>
-      <input class="form-input del-search" id="del-search" placeholder="용어 검색..." oninput="filterDelList(this.value)">
+      <div style="font-size:13px;color:var(--text3);margin-bottom:12px">전체 용어 ${DB.length}개 | 삭제 요청은 승인 후 db.json에 반영됩니다</div>
+      <input class="form-input del-search" id="del-search" placeholder="용어명으로 검색..." oninput="filterDelList(this.value)">
       <div class="del-list" id="del-list">
-        ${deletable.length?deletable.map(t=>`
+        ${DB.map(t=>`
           <div class="del-item" id="delrow-${t.id}">
-            <div class="del-item-info"><div class="del-item-kor">${t.kor} <span style="font-weight:400;font-size:12px;color:var(--text3)">${t.eng}</span></div><div class="del-item-cat">${t.category}</div></div>
-            <button class="del-btn" onclick="deleteTerm('${t.id}')">삭제</button>
-          </div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--text3);font-size:14px">삭제 가능한 용어가 없습니다</div>'}
+            <div class="del-item-info">
+              <div class="del-item-kor">${t.kor} <span style="font-weight:400;font-size:12px;color:var(--text3)">${t.eng}</span></div>
+              <div class="del-item-cat">${t.category}</div>
+            </div>
+            <button class="del-btn" onclick="requestDelete('${t.id}')">삭제 요청</button>
+          </div>`).join('')}
       </div>`;
+
+  // ── 내보내기 탭 ──
   } else {
     el.innerHTML=`
-      <div style="font-size:14px;color:var(--text2);margin-bottom:16px;line-height:1.7">현재 DB (기본 + 추가 용어 합산) 전체를 JSON 파일로 내보냅니다.<br>다운로드 후 GitHub의 db.json을 교체하면 영구 반영됩니다.</div>
-      <div style="display:flex;gap:8px">
+      <div style="font-size:14px;color:var(--text2);margin-bottom:16px;line-height:1.7">
+        ${GITHUB_TOKEN?'승인된 변경사항은 자동으로 db.json에 반영됩니다.<br>수동 내보내기도 가능합니다.':'GITHUB_TOKEN 설정 시 승인 즉시 자동 반영됩니다.'}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-primary" onclick="exportDB()">📥 JSON 내보내기</button>
         <button class="btn-secondary" onclick="exportCSV()">📊 CSV 내보내기</button>
       </div>
-      <div style="margin-top:16px;font-size:13px;color:var(--text3)">기본 용어: ${JSON.parse(localStorage.getItem('glossary_extra')||'[]').length>0?DB.length - JSON.parse(localStorage.getItem('glossary_extra')||'[]').length:DB.length}개 | 추가 용어: ${JSON.parse(localStorage.getItem('glossary_extra')||'[]').length}개 | 삭제: ${JSON.parse(localStorage.getItem('glossary_deleted')||'[]').length}개 | 현재 합계: ${DB.length}개</div>`;
+      <div style="margin-top:16px;font-size:13px;color:var(--text3)">현재 DB: ${DB.length}개 | 승인 대기: ${pendingAdds.length}개 | 삭제 대기: ${pendingDels.length}개</div>`;
   }
 }
 function filterDelList(q){
-  const rows=document.querySelectorAll('.del-item');
-  rows.forEach(r=>{r.style.display=r.querySelector('.del-item-kor').textContent.toLowerCase().includes(q.toLowerCase())?'flex':'none';});
+  document.querySelectorAll('.del-item').forEach(r=>{
+    r.style.display=r.querySelector('.del-item-kor').textContent.toLowerCase().includes(q.toLowerCase())?'flex':'none';
+  });
 }
-function deleteTerm(id){
-  const term=DB.find(t=>t.id===id);
-  if(!confirm(`"${term?term.kor:id}" 용어를 삭제하시겠습니까?`))return;
-  // DB에서 제거
-  DB=DB.filter(t=>t.id!==id);
-  // extra(추가 용어)에서도 제거
-  const extra=JSON.parse(localStorage.getItem('glossary_extra')||'[]').filter(t=>t.id!==id);
-  localStorage.setItem('glossary_extra',JSON.stringify(extra));
-  // 삭제 목록에 기록 (db.json 기본 용어도 재로드 시 제외)
-  const deleted=new Set(JSON.parse(localStorage.getItem('glossary_deleted')||'[]'));
-  deleted.add(id);
-  localStorage.setItem('glossary_deleted',JSON.stringify([...deleted]));
-  buildFuse(); buildCatList(); renderAll();
+
+// ── 삭제 요청 ──
+function requestDelete(id){
+  const term=DB.find(t=>t.id===id); if(!term)return;
+  if(pendingDels.find(t=>t.id===id)){showToast('이미 삭제 요청된 용어입니다');return;}
+  if(!confirm(`"${term.kor}" 용어 삭제를 요청하시겠습니까?\n관리자 승인 후 삭제됩니다.`))return;
+  pendingDels.push({...term, reason:'사용자 삭제 요청', requested_date:new Date().toISOString().slice(0,10)});
+  localStorage.setItem('pending_dels',JSON.stringify(pendingDels));
+  showToast(`"${term.kor}" 삭제 요청 완료 — 관리자 승인 후 반영됩니다`);
+  updatePendingBadge();
   const row=document.getElementById('delrow-'+id);
-  if(row)row.remove();
-  // 탭 카운트 갱신
-  const countEl=document.querySelector('#admin-tab-content>div:first-child');
-  if(countEl)countEl.textContent=`전체 용어 ${DB.length}개 | 삭제한 항목은 복원하려면 브라우저 새로고침 후 관리자에서 복원 가능`;
-  showToast(`"${term?term.kor:''}" 삭제 완료`);
+  if(row)row.querySelector('.del-btn').textContent='요청됨', row.querySelector('.del-btn').disabled=true;
 }
-function adminAdd(){
+
+// ── 승인: 등록 (approved: N → Y 변경) ──
+async function approveAdd(idx){
+  const t={...pendingAdds[idx]};
+  delete t.status;
+  t.approved='Y';
+  t.is_new=true;
+  t.approved_date=new Date().toISOString().slice(0,10);
+  // DB에 추가 (화면 표시)
+  DB.push(t);
+  // GitHub db.json에서 해당 id 항목 approved:Y로 변경
+  const ok=await updateApprovalInGithub(t.id,'Y');
+  pendingAdds.splice(idx,1);
+  localStorage.setItem('pending_adds',JSON.stringify(pendingAdds));
+  buildFuse(); buildCatList(); renderAll();
+  showToast(`"${t.kor}" 승인 완료${ok?' — db.json 반영됨':''}`, 'success');
+  updatePendingBadge();
+  renderAdminContent();
+}
+
+// ── 거부: 등록 ──
+function rejectAdd(idx){
+  const t=pendingAdds[idx];
+  if(!confirm(`"${t.kor}" 등록 요청을 거부하시겠습니까?`))return;
+  pendingAdds.splice(idx,1);
+  localStorage.setItem('pending_adds',JSON.stringify(pendingAdds));
+  updatePendingBadge();
+  showToast(`"${t.kor}" 요청 거부됨`);
+  renderAdminContent();
+}
+
+// ── 승인: 삭제 (db.json에서 해당 항목 제거) ──
+async function approveDel(idx){
+  const t=pendingDels[idx];
+  DB=DB.filter(d=>d.id!==t.id);
+  const ok=await deleteTermFromGithub(t.id);
+  pendingDels.splice(idx,1);
+  localStorage.setItem('pending_dels',JSON.stringify(pendingDels));
+  buildFuse(); buildCatList(); renderAll();
+  showToast(`"${t.kor}" 삭제 승인 완료${ok?' — db.json 반영됨':''}`, 'success');
+  updatePendingBadge();
+  renderAdminContent();
+}
+
+// ── 거부: 삭제 ──
+function rejectDel(idx){
+  const t=pendingDels[idx];
+  if(!confirm(`"${t.kor}" 삭제 요청을 거부하시겠습니까?`))return;
+  pendingDels.splice(idx,1);
+  localStorage.setItem('pending_dels',JSON.stringify(pendingDels));
+  updatePendingBadge();
+  showToast(`"${t.kor}" 삭제 요청 거부됨`);
+  renderAdminContent();
+}
+
+// ── GitHub: approved 값 변경 (N→Y) ──
+async function updateApprovalInGithub(id, approvedVal){
+  if(!GITHUB_TOKEN||!GITHUB_REPO) return false;
+  try{
+    const apiBase=`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
+    const getRes=await fetch(apiBase,{headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json'}});
+    if(!getRes.ok) return false;
+    const getJson=await getRes.json();
+    const sha=getJson.sha;
+    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/
+/g,'')))));
+    const term=current.terms.find(t=>t.id===id);
+    if(!term) return false;
+    term.approved=approvedVal;
+    term.approved_date=new Date().toISOString().slice(0,10);
+    const newContent=JSON.stringify(current,null,2);
+    const encoded=btoa(unescape(encodeURIComponent(newContent)));
+    const putRes=await fetch(apiBase,{
+      method:'PUT',
+      headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify({message:`용어 승인: ${term.kor}`,content:encoded,sha})
+    });
+    return putRes.ok;
+  }catch(e){console.error('updateApprovalInGithub failed:',e);return false;}
+}
+
+// ── GitHub: 용어 삭제 ──
+async function deleteTermFromGithub(id){
+  if(!GITHUB_TOKEN||!GITHUB_REPO) return false;
+  try{
+    const apiBase=`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
+    const getRes=await fetch(apiBase,{headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json'}});
+    if(!getRes.ok) return false;
+    const getJson=await getRes.json();
+    const sha=getJson.sha;
+    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/
+/g,'')))));
+    const term=current.terms.find(t=>t.id===id);
+    current.terms=current.terms.filter(t=>t.id!==id);
+    current.total=current.terms.length;
+    const newContent=JSON.stringify(current,null,2);
+    const encoded=btoa(unescape(encodeURIComponent(newContent)));
+    const putRes=await fetch(apiBase,{
+      method:'PUT',
+      headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify({message:`용어 삭제 승인: ${term?term.kor:id}`,content:encoded,sha})
+    });
+    return putRes.ok;
+  }catch(e){console.error('deleteTermFromGithub failed:',e);return false;}
+}
+
+// ── GitHub: 단일 용어 추가 (approved:N으로 push) ──
+async function pushTermToGithub(term){
+  if(!GITHUB_TOKEN||!GITHUB_REPO) return false;
+  try{
+    const apiBase=`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
+    const getRes=await fetch(apiBase,{headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json'}});
+    if(!getRes.ok) return false;
+    const getJson=await getRes.json();
+    const sha=getJson.sha;
+    const current=JSON.parse(decodeURIComponent(escape(atob(getJson.content.replace(/
+/g,'')))));
+    current.terms.push(term);
+    current.total=current.terms.length;
+    const newContent=JSON.stringify(current,null,2);
+    const encoded=btoa(unescape(encodeURIComponent(newContent)));
+    const putRes=await fetch(apiBase,{
+      method:'PUT',
+      headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify({message:`용어 등록 요청: ${term.kor} (승인 대기)`,content:encoded,sha})
+    });
+    return putRes.ok;
+  }catch(e){console.error('pushTermToGithub failed:',e);return false;}
+}
+
+// ── GitHub API: db.json 전체 업데이트 ──
+async function updateGithubDB(){
+  if(!GITHUB_TOKEN||!GITHUB_REPO) return false;
+  try{
+    const apiBase=`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
+    // 현재 파일 SHA 가져오기
+    const getRes=await fetch(apiBase,{headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json'}});
+    if(!getRes.ok) throw new Error('GET failed');
+    const getJson=await getRes.json();
+    const sha=getJson.sha;
+    // 새 내용 업로드
+    const newContent=JSON.stringify({terms:DB,version:'2.0',total:DB.length},null,2);
+    const encoded=btoa(unescape(encodeURIComponent(newContent)));
+    const putRes=await fetch(apiBase,{
+      method:'PUT',
+      headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify({message:`용어사전 업데이트 (${new Date().toLocaleDateString('ko-KR')})`,content:encoded,sha})
+    });
+    return putRes.ok;
+  }catch(e){console.error('GitHub update failed:',e);return false;}
+}
+
+// ── 관리자 직접 추가 (즉시 반영) ──
+async function adminAdd(){
   const kor=document.getElementById('f-kor').value.trim();
   const eng=document.getElementById('f-eng').value.trim();
   const short=document.getElementById('f-short').value.trim();
   if(!kor||!eng||!short){showToast('필수 항목을 입력해주세요');return;}
   const dups=findDuplicates(kor,eng);
-  if(dups.length){
-    if(!confirm(`유사한 용어 "${dups[0].kor}"이(가) 이미 있습니다. 그래도 추가하시겠습니까?`))return;
-  }
+  if(dups.length&&!confirm(`유사한 용어 "${dups[0].kor}"이(가) 있습니다. 그래도 추가하시겠습니까?`))return;
   const t={
     id:kor.toLowerCase().replace(/[\s\W]+/g,'-')+'-'+Date.now(),
     category:document.getElementById('f-cat').value, kor, eng, short,
@@ -971,10 +1232,11 @@ function adminAdd(){
     related:document.getElementById('f-rel').value.split(',').map(s=>s.trim()).filter(Boolean),
     added_date:new Date().toISOString().slice(0,10), is_new:true
   };
-  const extra=JSON.parse(localStorage.getItem('glossary_extra')||'[]');
-  extra.push(t); localStorage.setItem('glossary_extra',JSON.stringify(extra));
-  DB.push(t); buildFuse(); buildCatList(); renderAll(); closeAdmin();
-  showToast(`"${kor}" 추가 완료!`,'success');
+  t.approved='Y';
+  DB.push(t);
+  const ok=await pushTermToGithub(t);
+  buildFuse(); buildCatList(); renderAll(); closeAdmin();
+  showToast(`"${kor}" 추가 완료${ok?' — db.json 반영됨':''}!`,'success');
 }
 function exportDB(){
   const blob=new Blob([JSON.stringify({terms:DB,version:'2.0',total:DB.length},null,2)],{type:'application/json'});
